@@ -11,6 +11,10 @@
   --fama-purple: #8e44ad;
   --bg-dark: #1a1a2e;
   --bg-panel: rgba(10, 10, 10, 0.85);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 * {
@@ -22,11 +26,19 @@
 html, body, #root {
   width: 100%;
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
   background: var(--titans-black);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+  -webkit-overscroll-behavior: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 body {
@@ -34,24 +46,28 @@ body {
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none;
   user-select: none;
-  position: fixed;
-  width: 100%;
-  height: 100%;
 }
 
 canvas {
   display: block;
   touch-action: none;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 button {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 button:active {
   transform: scale(0.95);
   transition: transform 0.1s ease;
+}
+
+input, textarea {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 ::-webkit-scrollbar {
@@ -68,18 +84,13 @@ button:active {
   border-radius: 2px;
 }
 
-input, textarea {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
 }
 
 @keyframes fadeIn {
@@ -91,45 +102,34 @@ input, textarea {
   animation: fadeIn 0.4s ease-out forwards;
 }
 
-.titans-border {
-  border: 1px solid rgba(212, 175, 55, 0.3);
-}
-
-.titans-border-gold {
-  border: 1px solid var(--titans-gold);
-}
-
-.titans-glow {
-  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
-}
-
-.titans-glow-crimson {
-  box-shadow: 0 0 20px rgba(139, 0, 0, 0.4);
-}
-
-.gradient-crimson {
-  background: linear-gradient(135deg, var(--titans-crimson), var(--titans-crimson-light));
-}
-
-.gradient-gold-text {
-  background: linear-gradient(135deg, var(--titans-gold), var(--titans-gold-light));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.roman-shadow {
-  text-shadow: 0 0 40px rgba(212, 175, 55, 0.5), 0 4px 8px rgba(0, 0, 0, 0.8);
-}
-
 @media (max-width: 768px) {
   .hide-mobile {
     display: none !important;
   }
+  
+  .mobile-full-width {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+  
+  .mobile-center {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    right: auto !important;
+  }
+  
+  .mobile-small-padding {
+    padding: 10px 12px !important;
+  }
+  
+  .mobile-small-font {
+    font-size: 11px !important;
+  }
 }
 
-@media (min-width: 769px) {
-  .show-mobile-only {
-    display: none !important;
+@media (max-width: 480px) {
+  .mobile-xs-full-width {
+    width: calc(100% - 24px) !important;
+    min-width: unset !important;
   }
 }

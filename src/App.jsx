@@ -12,6 +12,17 @@ import { useCombatSystem, useZoneSystem } from './systems/combatSystem'
 import { ENEMY_TYPES, CITIES, COLORS, PHYSICS_CONFIG, CAMERA_CONFIG } from './utils/constants'
 import './styles/global.css'
 
+function useMobile() {
+  const [mobile, setMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setMobile(window.innerWidth < 768 || ('ontouchstart' in window && window.innerWidth < 1024))
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+  return mobile
+}
+
 function GameScene({ onBackToTitle }) {
   const gameStore = useGameStore()
   const combatStore = useCombatStore()
@@ -190,7 +201,7 @@ function GameScene({ onBackToTitle }) {
 
   return (
     <>
-      <Canvas shadows dpr={[1, 1.5]}>
+      <Canvas shadows dpr={[1, 1.5]} resize={{ scroll: false, debounce: 100 }}>
         <PerspectiveCamera makeDefault position={[0, CAMERA_CONFIG.THIRD_PERSON_HEIGHT, CAMERA_CONFIG.THIRD_PERSON_DISTANCE]} fov={60} />
 
         <Suspense fallback={null}>
@@ -247,94 +258,18 @@ function GameScene({ onBackToTitle }) {
       )}
 
       {combatStore.combatState === 'victory' && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: COLORS.BG_PANEL,
-          border: `2px solid ${COLORS.TITANS_GOLD}`,
-          borderRadius: '12px',
-          padding: '30px 40px',
-          textAlign: 'center',
-          zIndex: 60,
-          boxShadow: '0 0 40px rgba(212, 175, 55, 0.4)',
-        }}>
-          <div style={{ color: COLORS.TITANS_GOLD, fontSize: '32px', fontWeight: 'bold', marginBottom: '12px' }}>
-            VICTORIA
-          </div>
-          <div style={{ color: '#fff', fontSize: '16px', marginBottom: '8px' }}>
-            +{enemies.reduce((sum, e) => sum + (e.fameReward || 0), 0)} Fama
-          </div>
-          <div style={{ color: COLORS.TITANS_GOLD, fontSize: '14px', marginBottom: '20px' }}>
-            +{enemies.reduce((sum, e) => sum + (e.denariiReward || 0), 0)} Denarii
-          </div>
-          <button
-            onClick={() => {
-              combatStore.exitCombat()
-              setEnemies([])
-            }}
-            style={{
-              padding: '10px 30px',
-              background: 'linear-gradient(135deg, #8b0000, #b22222)',
-              border: '1px solid #d4af37',
-              borderRadius: '4px',
-              color: '#d4af37',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              letterSpacing: '2px',
-            }}
-          >
-            Continue
-          </button>
-        </div>
+        <VictoryModal enemies={enemies} onContinue={() => {
+          combatStore.exitCombat()
+          setEnemies([])
+        }} />
       )}
 
       {combatStore.combatState === 'defeat' && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: COLORS.BG_PANEL,
-          border: `2px solid ${COLORS.TITANS_CRIMSON}`,
-          borderRadius: '12px',
-          padding: '30px 40px',
-          textAlign: 'center',
-          zIndex: 60,
-          boxShadow: '0 0 40px rgba(139, 0, 0, 0.4)',
-        }}>
-          <div style={{ color: COLORS.TITANS_CRIMSON, fontSize: '32px', fontWeight: 'bold', marginBottom: '12px' }}>
-            DEFEAT
-          </div>
-          <div style={{ color: '#fff', fontSize: '16px', marginBottom: '8px' }}>
-            You have been defeated, but not destroyed.
-          </div>
-          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', marginBottom: '20px' }}>
-            Recover and return stronger.
-          </div>
-          <button
-            onClick={() => {
-              combatStore.exitCombat()
-              setEnemies([])
-              combatStore.modifyHealth(50)
-            }}
-            style={{
-              padding: '10px 30px',
-              background: 'linear-gradient(135deg, #8b0000, #b22222)',
-              border: '1px solid #d4af37',
-              borderRadius: '4px',
-              color: '#d4af37',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              letterSpacing: '2px',
-            }}
-          >
-            Recover
-          </button>
-        </div>
+        <DefeatModal onRecover={() => {
+          combatStore.exitCombat()
+          setEnemies([])
+          combatStore.modifyHealth(50)
+        }} />
       )}
     </>
   )
@@ -418,6 +353,7 @@ export default function App() {
       position: 'relative',
       width: '100vw',
       height: '100vh',
+      height: '100dvh',
       overflow: 'hidden',
       background: '#0a0a0a',
     }}>
@@ -442,6 +378,104 @@ export default function App() {
           transform: scale(0.95);
         }
       `}</style>
+    </div>
+  )
+}
+
+function VictoryModal({ enemies, onContinue }) {
+  const mobile = useMobile()
+  return (
+    <div style={{
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      background: COLORS.BG_PANEL,
+      border: `2px solid ${COLORS.TITANS_GOLD}`,
+      borderRadius: '12px',
+      padding: mobile ? '20px' : '30px 40px',
+      textAlign: 'center',
+      zIndex: 60,
+      boxShadow: '0 0 40px rgba(212, 175, 55, 0.4)',
+      width: mobile ? 'calc(100% - 32px)' : 'auto',
+      maxWidth: '400px',
+    }}>
+      <div style={{ color: COLORS.TITANS_GOLD, fontSize: mobile ? '24px' : '32px', fontWeight: 'bold', marginBottom: '12px' }}>
+        VICTORIA
+      </div>
+      <div style={{ color: '#fff', fontSize: mobile ? '14px' : '16px', marginBottom: '8px' }}>
+        +{enemies.reduce((sum, e) => sum + (e.fameReward || 0), 0)} Fama
+      </div>
+      <div style={{ color: COLORS.TITANS_GOLD, fontSize: mobile ? '13px' : '14px', marginBottom: '20px' }}>
+        +{enemies.reduce((sum, e) => sum + (e.denariiReward || 0), 0)} Denarii
+      </div>
+      <button
+        onClick={onContinue}
+        style={{
+          padding: '12px 30px',
+          background: 'linear-gradient(135deg, #8b0000, #b22222)',
+          border: '1px solid #d4af37',
+          borderRadius: '4px',
+          color: '#d4af37',
+          cursor: 'pointer',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          letterSpacing: '2px',
+          minHeight: '44px',
+          width: mobile ? '100%' : 'auto',
+        }}
+      >
+        Continue
+      </button>
+    </div>
+  )
+}
+
+function DefeatModal({ onRecover }) {
+  const mobile = useMobile()
+  return (
+    <div style={{
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      background: COLORS.BG_PANEL,
+      border: `2px solid ${COLORS.TITANS_CRIMSON}`,
+      borderRadius: '12px',
+      padding: mobile ? '20px' : '30px 40px',
+      textAlign: 'center',
+      zIndex: 60,
+      boxShadow: '0 0 40px rgba(139, 0, 0, 0.4)',
+      width: mobile ? 'calc(100% - 32px)' : 'auto',
+      maxWidth: '400px',
+    }}>
+      <div style={{ color: COLORS.TITANS_CRIMSON, fontSize: mobile ? '24px' : '32px', fontWeight: 'bold', marginBottom: '12px' }}>
+        DEFEAT
+      </div>
+      <div style={{ color: '#fff', fontSize: mobile ? '14px' : '16px', marginBottom: '8px' }}>
+        You have been defeated, but not destroyed.
+      </div>
+      <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: mobile ? '12px' : '13px', marginBottom: '20px' }}>
+        Recover and return stronger.
+      </div>
+      <button
+        onClick={onRecover}
+        style={{
+          padding: '12px 30px',
+          background: 'linear-gradient(135deg, #8b0000, #b22222)',
+          border: '1px solid #d4af37',
+          borderRadius: '4px',
+          color: '#d4af37',
+          cursor: 'pointer',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          letterSpacing: '2px',
+          minHeight: '44px',
+          width: mobile ? '100%' : 'auto',
+        }}
+      >
+        Recover
+      </button>
     </div>
   )
 }

@@ -1,10 +1,22 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useGameStore } from '../../../stores/gameStore'
 import { CITIES, CITY_DATA, COLORS } from '../../../utils/constants'
+
+function useMobile() {
+  const [mobile, setMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setMobile(window.innerWidth < 768 || ('ontouchstart' in window && window.innerWidth < 1024))
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+  return mobile
+}
 
 export function WorldMap({ onTravel, onClose }) {
   const gameStore = useGameStore()
   const [selectedCity, setSelectedCity] = useState(null)
+  const mobile = useMobile()
 
   const visitedCities = gameStore.visitedCities || []
   const currentCity = gameStore.currentCity
@@ -15,6 +27,9 @@ export function WorldMap({ onTravel, onClose }) {
     if (CITY_DATA[cityId]?.connections?.some((c) => visitedCities.includes(c.to))) return 'unlockable'
     return 'locked'
   }
+
+  const cardWidth = mobile ? 'calc(50% - 10px)' : '180px'
+  const cardMinWidth = mobile ? '140px' : '180px'
 
   return (
     <div className="world-map" style={{
@@ -29,6 +44,7 @@ export function WorldMap({ onTravel, onClose }) {
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 50,
+      padding: mobile ? '16px' : '0',
     }}>
       <div style={{
         position: 'absolute',
@@ -42,21 +58,22 @@ export function WorldMap({ onTravel, onClose }) {
 
       <div style={{
         position: 'absolute',
-        top: '20px',
+        top: mobile ? 'max(16px, var(--safe-top))' : '20px',
         left: '50%',
         transform: 'translateX(-50%)',
         textAlign: 'center',
+        width: mobile ? 'calc(100% - 80px)' : 'auto',
       }}>
         <h2 style={{
           color: COLORS.TITANS_GOLD,
-          fontSize: '24px',
+          fontSize: mobile ? '18px' : '24px',
           fontWeight: 'bold',
-          letterSpacing: '4px',
+          letterSpacing: mobile ? '2px' : '4px',
           textShadow: '0 0 20px rgba(212, 175, 55, 0.5)',
         }}>
           MAP OF THE EMPIRE
         </h2>
-        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', marginTop: '4px' }}>
+        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: mobile ? '11px' : '12px', marginTop: '4px' }}>
           Select a city to travel
         </div>
       </div>
@@ -64,11 +81,12 @@ export function WorldMap({ onTravel, onClose }) {
       <div style={{
         display: 'flex',
         flexWrap: 'wrap',
-        gap: '20px',
+        gap: mobile ? '10px' : '20px',
         justifyContent: 'center',
-        maxWidth: '800px',
-        padding: '20px',
-        marginTop: '60px',
+        maxWidth: mobile ? '100%' : '800px',
+        padding: mobile ? '60px 8px 80px' : '20px',
+        marginTop: mobile ? '0' : '60px',
+        width: '100%',
       }}>
         {Object.entries(CITY_DATA).map(([cityId, city]) => {
           const status = getCityStatus(cityId)
@@ -100,8 +118,9 @@ export function WorldMap({ onTravel, onClose }) {
               key={cityId}
               onClick={() => status !== 'locked' && setSelectedCity(cityId)}
               style={{
-                width: '180px',
-                padding: '16px',
+                width: cardWidth,
+                minWidth: cardMinWidth,
+                padding: mobile ? '12px' : '16px',
                 background: isSelected ? 'rgba(212, 175, 55, 0.15)' : bgColor,
                 border: `1px solid ${isSelected ? COLORS.TITANS_GOLD : borderColor}`,
                 borderRadius: '8px',
@@ -123,17 +142,17 @@ export function WorldMap({ onTravel, onClose }) {
                 }
               }}
             >
-              <div style={{ color: textColor, fontSize: '16px', fontWeight: 'bold', marginBottom: '4px' }}>
+              <div style={{ color: textColor, fontSize: mobile ? '14px' : '16px', fontWeight: 'bold', marginBottom: '4px' }}>
                 {city.displayName}
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', marginBottom: '8px' }}>
+              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: mobile ? '10px' : '11px', marginBottom: '6px' }}>
                 {city.description}
               </div>
               {travelInfo && status !== 'locked' && (
                 <div style={{
                   display: 'flex',
                   gap: '8px',
-                  fontSize: '11px',
+                  fontSize: mobile ? '10px' : '11px',
                   color: COLORS.TITANS_GOLD,
                   opacity: 0.7,
                 }}>
@@ -142,12 +161,12 @@ export function WorldMap({ onTravel, onClose }) {
                 </div>
               )}
               {status === 'current' && (
-                <div style={{ color: COLORS.TITANS_GOLD, fontSize: '11px', marginTop: '4px' }}>
+                <div style={{ color: COLORS.TITANS_GOLD, fontSize: mobile ? '10px' : '11px', marginTop: '4px' }}>
                   ● Current Location
                 </div>
               )}
               {status === 'locked' && (
-                <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginTop: '4px' }}>
+                <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: mobile ? '10px' : '11px', marginTop: '4px' }}>
                   🔒 Not yet discovered
                 </div>
               )}
@@ -159,33 +178,37 @@ export function WorldMap({ onTravel, onClose }) {
       {selectedCity && selectedCity !== currentCity && (
         <div style={{
           position: 'absolute',
-          bottom: '40px',
+          bottom: mobile ? 'max(24px, var(--safe-bottom))' : '40px',
           left: '50%',
           transform: 'translateX(-50%)',
           background: COLORS.BG_PANEL,
           border: `1px solid ${COLORS.TITANS_GOLD}`,
           borderRadius: '8px',
-          padding: '16px 24px',
+          padding: mobile ? '14px 16px' : '16px 24px',
           textAlign: 'center',
           boxShadow: '0 0 30px rgba(212, 175, 55, 0.2)',
+          width: mobile ? 'calc(100% - 32px)' : 'auto',
+          maxWidth: '400px',
         }}>
-          <div style={{ color: '#fff', fontSize: '14px', marginBottom: '4px' }}>
+          <div style={{ color: '#fff', fontSize: mobile ? '13px' : '14px', marginBottom: '4px' }}>
             Travel to {CITY_DATA[selectedCity]?.displayName}?
           </div>
-          <div style={{ color: COLORS.TITANS_GOLD, fontSize: '12px', marginBottom: '12px' }}>
+          <div style={{ color: COLORS.TITANS_GOLD, fontSize: mobile ? '11px' : '12px', marginBottom: '12px' }}>
             Time will pass during your journey
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={onClose}
               style={{
-                padding: '8px 20px',
+                padding: '10px 16px',
                 background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(212, 175, 55, 0.3)',
                 borderRadius: '4px',
                 color: COLORS.TITANS_GOLD,
                 cursor: 'pointer',
-                fontSize: '13px',
+                fontSize: mobile ? '13px' : '13px',
+                minHeight: '44px',
+                flex: 1,
               }}
             >
               Cancel
@@ -196,14 +219,16 @@ export function WorldMap({ onTravel, onClose }) {
                 setSelectedCity(null)
               }}
               style={{
-                padding: '8px 20px',
+                padding: '10px 16px',
                 background: 'linear-gradient(135deg, #8b0000, #b22222)',
                 border: '1px solid #d4af37',
                 borderRadius: '4px',
                 color: '#d4af37',
                 cursor: 'pointer',
-                fontSize: '13px',
+                fontSize: mobile ? '13px' : '13px',
                 fontWeight: 'bold',
+                minHeight: '44px',
+                flex: 1,
               }}
             >
               Travel
@@ -216,8 +241,8 @@ export function WorldMap({ onTravel, onClose }) {
         onClick={onClose}
         style={{
           position: 'absolute',
-          top: '20px',
-          right: '20px',
+          top: mobile ? 'max(60px, var(--safe-top))' : '20px',
+          right: mobile ? 'max(12px, var(--safe-right))' : '20px',
           padding: '8px 16px',
           background: 'rgba(255,255,255,0.05)',
           border: '1px solid rgba(212, 175, 55, 0.3)',
@@ -225,6 +250,7 @@ export function WorldMap({ onTravel, onClose }) {
           color: COLORS.TITANS_GOLD,
           cursor: 'pointer',
           fontSize: '13px',
+          minHeight: '40px',
         }}
       >
         Close
