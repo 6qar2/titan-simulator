@@ -7,7 +7,7 @@ import { WorldMap } from './components/Game/WorldMap/WorldMap'
 import { HUD } from './components/Game/HUD/HUD'
 import { CapuaZone } from './components/Game/Zones/Capua'
 import { PlayerCharacter, EnemyMesh } from './components/Game/Character/Character'
-import { useGameStore, useCombatStore, useControlsStore } from './stores/gameStore'
+import { useGameStore, useCombatStore, useControlsStore, useCharacterStore } from './stores/gameStore'
 import { useCombatSystem, useZoneSystem } from './systems/combatSystem'
 import { CITIES, COLORS, CAMERA_CONFIG } from './utils/constants'
 import './styles/global.css'
@@ -25,12 +25,12 @@ function useMobile() {
 
 function GameScene() {
   const gameStore = useGameStore()
+  const charStore = useCharacterStore()
   const combatStore = useCombatStore()
   const combatSystem = useCombatSystem()
   const zoneSystem = useZoneSystem()
 
   const [showWorldMap, setShowWorldMap] = useState(false)
-  const [enemies, setEnemies] = useState([])
   const [playerPosition, setPlayerPosition] = useState([0, 0, 5])
   const [renderError, setRenderError] = useState(null)
   const [sceneReady, setSceneReady] = useState(false)
@@ -50,7 +50,7 @@ function GameScene() {
   }, [])
 
   useEffect(() => {
-    if (enemies.length === 0 && combatStore.combatState === 'idle' && sceneReady) {
+    if (combatStore.enemies.length === 0 && combatStore.combatState === 'idle' && sceneReady) {
       const newEnemies = zoneSystem.spawnEnemiesForZone('arena').map((e, i) => ({
         ...e,
         id: `enemy-${Date.now()}-${i}`,
@@ -65,20 +65,24 @@ function GameScene() {
         stunnedUntil: 0,
         state: 'idle',
       }))
-      setEnemies(newEnemies)
       combatStore.startCombat(newEnemies)
     }
-  }, [sceneReady, enemies.length, combatStore.combatState, combatStore, zoneSystem])
+  }, [sceneReady, combatStore.enemies.length, combatStore.combatState, combatStore, zoneSystem])
 
   useEffect(() => {
     const timer = setTimeout(() => setSceneReady(true), 50)
+    const worldMapFlag = sessionStorage.getItem('titan-simulator-worldmap')
+    if (worldMapFlag) {
+      setShowWorldMap(true)
+      sessionStorage.removeItem('titan-simulator-worldmap')
+    }
     return () => clearTimeout(timer)
   }, [])
 
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now()
-      enemies.forEach((enemy) => {
+      combatStore.enemies.forEach((enemy) => {
         if (enemy.health <= 0) return
         const dx = playerPosition[0] - enemy.position[0]
         const dz = playerPosition[2] - enemy.position[2]
@@ -86,23 +90,23 @@ function GameScene() {
         if (distance < enemy.attackRange && now > (enemy.lastAttackTime || 0) + enemy.attackCooldown * 1000) {
           const result = combatSystem.enemyAttack(enemy)
           if (result?.success) {
-            setEnemies((prev) => prev.map((e) => e.id === enemy.id ? { ...e, lastAttackTime: now } : e))
+            combatStore.updateEnemy(enemy.id, { lastAttackTime: now })
           }
         }
       })
     }, 500)
     return () => clearInterval(interval)
-  }, [enemies, playerPosition, combatSystem])
+  }, [playerPosition, combatSystem, combatStore])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (gameStore.gameState !== 'zone') return
       const controlsStore = useControlsStore.getState()
       switch (e.key.toLowerCase()) {
-        case 'w': case 'arrowup': controlsStore.setMoveInput((prev) => ({ ...prev, y: -1 })); break
-        case 's': case 'arrowdown': controlsStore.setMoveInput((prev) => ({ ...prev, y: 1 })); break
-        case 'a': case 'arrowleft': controlsStore.setMoveInput((prev) => ({ ...prev, x: -1 })); break
-        case 'd': case 'arrowright': controlsStore.setMoveInput((prev) => ({ ...prev, x: 1 })); break
+        case 'w': case 'arrowup': controlsStore.setMoveInput({ x: 0, y: -1 }); break
+        case 's': case 'arrowdown': controlsStore.setMoveInput({ x: 0, y: 1 }); break
+        case 'a': case 'arrowleft': controlsStore.setMoveInput({ x: -1, y: 0 }); break
+        case 'd': case 'arrowright': controlsStore.setMoveInput({ x: 1, y: 0 }); break
         case ' ':
           e.preventDefault()
           controlsStore.setAttacking(true)
@@ -121,10 +125,10 @@ function GameScene() {
     const handleKeyUp = (e) => {
       const controlsStore = useControlsStore.getState()
       switch (e.key.toLowerCase()) {
-        case 'w': case 'arrowup': controlsStore.setMoveInput((prev) => ({ ...prev, y: 0 })); break
-        case 's': case 'arrowdown': controlsStore.setMoveInput((prev) => ({ ...prev, y: 0 })); break
-        case 'a': case 'arrowleft': controlsStore.setMoveInput((prev) => ({ ...prev, x: 0 })); break
-        case 'd': case 'arrowright': controlsStore.setMoveInput((prev) => ({ ...prev, x: 0 })); break
+        case 'w': case 'arrowup': controlsStore.setMoveInput({ x: 0, y: 0 }); break
+        case 's': case 'arrowdown': controlsStore.setMoveInput({ x: 0, y: 0 }); break
+        case 'a': case 'arrowleft': controlsStore.setMoveInput({ x: 0, y: 0 }); break
+        case 'd': case 'arrowright': controlsStore.setMoveInput({ x: 0, y: 0 }); break
         case ' ': controlsStore.setAttacking(false); break
         default: break
       }
@@ -158,7 +162,6 @@ function GameScene() {
   const handleTravel = (cityId) => {
     gameStore.travelToCity(cityId)
     setShowWorldMap(false)
-    setEnemies([])
     combatStore.exitCombat()
     setPlayerPosition([0, 0, 5])
   }
@@ -197,9 +200,9 @@ function GameScene() {
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 20, 5]} intensity={1.0} />
         <hemisphereLight skyColor="#87ceeb" groundColor="#d4c4a8" intensity={0.3} />
-        <PlayerCharacter position={playerPosition} />
-        {enemies.filter((e) => e.health > 0).map((enemy) => (
-          <EnemyMesh key={enemy.id} position={enemy.position} color={enemy.color} enemyType={enemy.id} />
+        <PlayerCharacter position={playerPosition} appearance={charStore.appearance} sex={charStore.sex} />
+        {combatStore.enemies.filter((e) => e.health > 0).map((enemy) => (
+          <EnemyMesh key={enemy.id} position={enemy.position} color={enemy.color} enemyType={enemy.typeId || enemy.id} />
         ))}
       </Canvas>
 
@@ -210,10 +213,10 @@ function GameScene() {
       )}
 
       {combatStore.combatState === 'victory' && (
-        <VictoryModal enemies={enemies} onContinue={() => { combatStore.exitCombat(); setEnemies([]); }} />
+        <VictoryModal enemies={combatStore.enemies} onContinue={() => { combatStore.exitCombat(); }} />
       )}
       {combatStore.combatState === 'defeat' && (
-        <DefeatModal onRecover={() => { combatStore.exitCombat(); setEnemies([]); combatStore.modifyHealth(50); }} />
+        <DefeatModal onRecover={() => { combatStore.exitCombat(); combatStore.modifyHealth(50); }} />
       )}
     </>
   )

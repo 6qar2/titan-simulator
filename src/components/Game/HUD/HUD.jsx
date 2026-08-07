@@ -35,7 +35,8 @@ export function HUD() {
 
   const handleAttack = useCallback(() => {
     if (combatStore.combatState === 'active') {
-      const result = combatSystem.performAttack('quick_strike')
+      const target = combatStore.enemies.find((e) => e.health > 0) || null
+      const result = combatSystem.performAttack('quick_strike', target)
       console.log('Attack result:', result)
     }
   }, [combatStore, combatSystem])
@@ -60,7 +61,8 @@ export function HUD() {
     (abilityId) => {
       if (combatStore.tacticalPause || combatSystem.canUseAbility(abilityId)) {
         combatStore.setSelectedAbility(abilityId)
-        const result = combatSystem.performAttack(abilityId)
+        const target = combatStore.enemies.find((e) => e.health > 0) || null
+        const result = combatSystem.performAttack(abilityId, target)
         console.log('Ability result:', result)
         setShowTactics(false)
         combatStore.setTacticalPause(false)
@@ -205,22 +207,22 @@ export function HUD() {
             <button
               key={ability.id}
               onClick={() => useAbility(ability.id)}
-              disabled={!combatStore.canUseAbility(ability.id)}
+              disabled={!combatSystem.canUseAbility(ability.id)}
               style={{
                 width: isMobile ? '44px' : '50px',
                 height: isMobile ? '44px' : '50px',
                 borderRadius: '8px',
-                background: combatStore.canUseAbility(ability.id)
+                background: combatSystem.canUseAbility(ability.id)
                   ? `linear-gradient(135deg, ${COLORS.TITANS_CRIMSON}, ${COLORS.TITANS_CRIMSON_LIGHT})`
                   : 'rgba(255,255,255,0.05)',
-                border: `1px solid ${combatStore.canUseAbility(ability.id) ? COLORS.TITANS_GOLD : 'rgba(255,255,255,0.1)'}`,
-                color: combatStore.canUseAbility(ability.id) ? COLORS.TITANS_GOLD : 'rgba(255,255,255,0.3)',
+                border: `1px solid ${combatSystem.canUseAbility(ability.id) ? COLORS.TITANS_GOLD : 'rgba(255,255,255,0.1)'}`,
+                color: combatSystem.canUseAbility(ability.id) ? COLORS.TITANS_GOLD : 'rgba(255,255,255,0.3)',
                 fontSize: isMobile ? '16px' : '20px',
-                cursor: combatStore.canUseAbility(ability.id) ? 'pointer' : 'not-allowed',
+                cursor: combatSystem.canUseAbility(ability.id) ? 'pointer' : 'not-allowed',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: combatStore.canUseAbility(ability.id)
+                boxShadow: combatSystem.canUseAbility(ability.id)
                   ? '0 0 10px rgba(139, 0, 0, 0.4)'
                   : 'none',
                 transition: 'all 0.2s ease',
@@ -282,13 +284,13 @@ export function HUD() {
                   alignItems: 'center',
                   gap: isMobile ? '8px' : '12px',
                   padding: isMobile ? '8px 10px' : '10px 14px',
-                  background: combatStore.canUseAbility(ability.id)
+                  background: combatSystem.canUseAbility(ability.id)
                     ? 'rgba(139, 0, 0, 0.3)'
                     : 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${combatStore.canUseAbility(ability.id) ? COLORS.TITANS_CRIMSON : 'rgba(255,255,255,0.05)'}`,
+                  border: `1px solid ${combatSystem.canUseAbility(ability.id) ? COLORS.TITANS_CRIMSON : 'rgba(255,255,255,0.05)'}`,
                   borderRadius: '6px',
-                  color: combatStore.canUseAbility(ability.id) ? '#fff' : 'rgba(255,255,255,0.3)',
-                  cursor: combatStore.canUseAbility(ability.id) ? 'pointer' : 'not-allowed',
+                  color: combatSystem.canUseAbility(ability.id) ? '#fff' : 'rgba(255,255,255,0.3)',
+                  cursor: combatSystem.canUseAbility(ability.id) ? 'pointer' : 'not-allowed',
                   fontSize: isMobile ? '12px' : '13px',
                   textAlign: 'left',
                   transition: 'all 0.15s ease',

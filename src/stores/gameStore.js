@@ -40,9 +40,9 @@ export const useGameStore = create(
       travelToCity: (cityId) => {
         const state = get()
         const hours = 3
-        const newMinute = state.worldTime.minute + hours * 60
-        const newDay = state.worldTime.day + Math.floor(newMinute / (24 * 60))
-        const newHour = newMinute % (24 * 60) / 60
+        const totalMinutes = state.worldTime.hour * 60 + state.worldTime.minute + hours * 60
+        const newDay = state.worldTime.day + Math.floor(totalMinutes / (24 * 60))
+        const newHour = totalMinutes % (24 * 60) / 60
         const newMonth = state.worldTime.month + Math.floor(newDay / 30)
         const newYear = state.worldTime.year + Math.floor(newMonth / 12)
 

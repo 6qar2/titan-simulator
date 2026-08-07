@@ -29,7 +29,9 @@ export function TitleScreen({ onStart }) {
   }
 
   const handleContinue = () => {
-    onStart?.()
+    if (charStore.character) {
+      onStart?.()
+    }
   }
 
   const titleSize = mobile ? '42px' : '64px'
@@ -180,7 +182,10 @@ export function TitleScreen({ onStart }) {
             Continue
           </button>
           <button
-            onClick={() => gameStore.setGameState('world_map')}
+            onClick={() => {
+              sessionStorage.setItem('titan-simulator-worldmap', 'true')
+              onStart?.()
+            }}
             style={{
               padding: buttonPadding,
               background: 'rgba(255,255,255,0.03)',

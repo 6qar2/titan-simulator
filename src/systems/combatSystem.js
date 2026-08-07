@@ -187,6 +187,7 @@ export function useZoneSystem() {
 
     return config.enemies.map((enemyType, index) => ({
       ...enemyType,
+      typeId: enemyType.id,
       id: `enemy-${Date.now()}-${index}`,
       health: enemyType.health,
       maxHealth: enemyType.health,
