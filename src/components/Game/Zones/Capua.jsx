@@ -1,12 +1,14 @@
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useGameStore, useControlsStore } from '../../../stores/gameStore'
+import { useGameStore, useControlsStore, useCharacterStore, playerPositionRef } from '../../../stores/gameStore'
+import { PlayerCharacter } from '../Character/Character'
 import { PHYSICS_CONFIG } from '../../../utils/constants'
 
 export function CapuaZone() {
   const { currentZone } = useGameStore()
   const controlsStore = useControlsStore()
+  const charStore = useCharacterStore()
   const playerRef = useRef()
 
   useFrame((state, delta) => {
@@ -40,6 +42,11 @@ export function CapuaZone() {
     }
 
     playerRef.current.position.y = 0
+    playerPositionRef.current = [
+      playerRef.current.position.x,
+      playerRef.current.position.y,
+      playerRef.current.position.z,
+    ]
   })
 
   const buildings = useMemo(() => {
@@ -105,18 +112,7 @@ export function CapuaZone() {
       <ArenaRing position={[0, 0, 0]} />
 
       <group ref={playerRef} position={[0, 0, 5]}>
-        <mesh castShadow>
-          <capsuleGeometry args={[0.25, 0.7, 4, 8]} />
-          <meshStandardMaterial color="#3498db" roughness={0.7} />
-        </mesh>
-        <mesh position={[0, 1.0, 0]} castShadow>
-          <capsuleGeometry args={[0.22, 0.5, 4, 8]} />
-          <meshStandardMaterial color="#3498db" roughness={0.7} />
-        </mesh>
-        <mesh position={[0, 1.5, 0]} castShadow>
-          <sphereGeometry args={[0.22, 12, 12]} />
-          <meshStandardMaterial color="#3498db" roughness={0.7} />
-        </mesh>
+        <PlayerCharacter position={[0, 0, 0]} appearance={charStore.appearance} sex={charStore.sex} />
       </group>
     </group>
   )

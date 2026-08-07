@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import { TitleScreen } from './components/Game/TitleScreen/TitleScreen'
@@ -7,7 +7,7 @@ import { WorldMap } from './components/Game/WorldMap/WorldMap'
 import { HUD } from './components/Game/HUD/HUD'
 import { CapuaZone } from './components/Game/Zones/Capua'
 import { PlayerCharacter, EnemyMesh } from './components/Game/Character/Character'
-import { useGameStore, useCombatStore, useControlsStore, useCharacterStore } from './stores/gameStore'
+import { useGameStore, useCombatStore, useControlsStore, useCharacterStore, playerPositionRef } from './stores/gameStore'
 import { useCombatSystem, useZoneSystem } from './systems/combatSystem'
 import { CITIES, COLORS, CAMERA_CONFIG } from './utils/constants'
 import './styles/global.css'
@@ -23,15 +23,71 @@ function useMobile() {
   return mobile
 }
 
+function useLandscape() {
+  const [landscape, setLandscape] = useState(true)
+  useEffect(() => {
+    const check = () => setLandscape(window.innerWidth > window.innerHeight)
+    check()
+    window.addEventListener('resize', check)
+    window.addEventListener('orientationchange', check)
+    return () => {
+      window.removeEventListener('resize', check)
+      window.removeEventListener('orientationchange', check)
+    }
+  }, [])
+  return landscape
+}
+
+function PortraitWarning() {
+  return (
+    <div style={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: '#0a0a0a',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999,
+      padding: '20px',
+      textAlign: 'center',
+    }}>
+      <div style={{
+        fontSize: '48px',
+        marginBottom: '20px',
+      }}>📱</div>
+      <div style={{
+        color: '#d4af37',
+        fontSize: '24px',
+        fontWeight: 'bold',
+        marginBottom: '12px',
+        fontFamily: 'serif',
+      }}>
+        ROTATE YOUR DEVICE
+      </div>
+      <div style={{
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: '16px',
+        maxWidth: '400px',
+      }}>
+        Titan Simulator requires landscape mode for the best combat experience.
+      </div>
+    </div>
+  )
+}
+
 function GameScene() {
   const gameStore = useGameStore()
   const charStore = useCharacterStore()
   const combatStore = useCombatStore()
+  const controlsStore = useControlsStore()
   const combatSystem = useCombatSystem()
   const zoneSystem = useZoneSystem()
 
   const [showWorldMap, setShowWorldMap] = useState(false)
-  const [playerPosition, setPlayerPosition] = useState([0, 0, 5])
   const [renderError, setRenderError] = useState(null)
   const [sceneReady, setSceneReady] = useState(false)
   const clockRef = useRef(new THREE.Clock())
@@ -82,10 +138,11 @@ function GameScene() {
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now()
+      const playerPos = playerPositionRef.current
       combatStore.enemies.forEach((enemy) => {
         if (enemy.health <= 0) return
-        const dx = playerPosition[0] - enemy.position[0]
-        const dz = playerPosition[2] - enemy.position[2]
+        const dx = playerPos[0] - enemy.position[0]
+        const dz = playerPos[2] - enemy.position[2]
         const distance = Math.sqrt(dx * dx + dz * dz)
         if (distance < enemy.attackRange && now > (enemy.lastAttackTime || 0) + enemy.attackCooldown * 1000) {
           const result = combatSystem.enemyAttack(enemy)
@@ -96,7 +153,7 @@ function GameScene() {
       })
     }, 500)
     return () => clearInterval(interval)
-  }, [playerPosition, combatSystem, combatStore])
+  }, [combatSystem, combatStore])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -163,7 +220,7 @@ function GameScene() {
     gameStore.travelToCity(cityId)
     setShowWorldMap(false)
     combatStore.exitCombat()
-    setPlayerPosition([0, 0, 5])
+    playerPositionRef.current = [0, 0, 5]
   }
 
   if (renderError) {
@@ -200,7 +257,6 @@ function GameScene() {
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 20, 5]} intensity={1.0} />
         <hemisphereLight skyColor="#87ceeb" groundColor="#d4c4a8" intensity={0.3} />
-        <PlayerCharacter position={playerPosition} appearance={charStore.appearance} sex={charStore.sex} />
         {combatStore.enemies.filter((e) => e.health > 0).map((enemy) => (
           <EnemyMesh key={enemy.id} position={enemy.position} color={enemy.color} enemyType={enemy.typeId || enemy.id} />
         ))}
@@ -242,6 +298,7 @@ function LoadingScreen() {
 export default function App() {
   const [phase, setPhase] = useState('loading')
   const gameStore = useGameStore()
+  const landscape = useLandscape()
 
   useEffect(() => {
     const timer = setTimeout(() => setPhase('title'), 600)
@@ -273,6 +330,7 @@ export default function App() {
         position: 'relative', width: '100vw', height: '100vh', height: '100dvh',
         overflow: 'hidden', background: '#0a0a0a',
       }}>
+        {!landscape && <PortraitWarning />}
         <GameScene />
       </div>
     )
