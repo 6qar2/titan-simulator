@@ -3,6 +3,7 @@ import { useGameStore, useCombatStore, useControlsStore } from '../../../stores/
 import { useCombatSystem } from '../../../systems/combatSystem'
 import { ABILITIES, COLORS, INPUT_CONFIG } from '../../../utils/constants'
 import { VirtualJoystick, GestureZone, TacticsButton } from '../Controls/Controls'
+import { requestFullscreen, exitFullscreen, isFullscreen } from '../../../utils/fullscreen'
 
 const isMobileScreen = () => {
   if (typeof window === 'undefined') return false
@@ -97,6 +98,34 @@ export function HUD() {
       zIndex: 10,
       paddingTop: 'var(--safe-top)',
     }}>
+      <button
+        onClick={() => isFullscreen() ? exitFullscreen() : requestFullscreen()}
+        style={{
+          position: 'absolute',
+          top: topPadding,
+          right: sidePadding,
+          background: 'rgba(10,10,10,0.7)',
+          border: '1px solid rgba(212, 175, 55, 0.3)',
+          borderRadius: '8px',
+          color: '#d4af37',
+          fontSize: isMobile ? '18px' : '16px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          width: isMobile ? '40px' : '36px',
+          height: isMobile ? '40px' : '36px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 11,
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          padding: 0,
+          lineHeight: 1,
+        }}
+      >
+        ⛶
+      </button>
+
       <div style={{
         position: 'absolute',
         top: topPadding,

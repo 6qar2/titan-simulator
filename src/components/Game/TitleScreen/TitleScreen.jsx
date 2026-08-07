@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useGameStore, useCharacterStore } from '../../../stores/gameStore'
 import { CITIES, CHARACTER_SEX, SOCIAL_CLASSES, ATTRIBUTES, ATTRIBUTE_LABELS, COLORS } from '../../../utils/constants'
 import { createNewCharacter } from '../../../systems/saveSystem'
+import { requestFullscreen, exitFullscreen, isFullscreen } from '../../../utils/fullscreen'
 
 function useMobile() {
   const [mobile, setMobile] = useState(false)
@@ -251,6 +252,30 @@ export function TitleScreen({ onStart }) {
       }}>
         v0.1.0 · Phase 1 Prototype
       </div>
+
+      <button
+        onClick={() => isFullscreen() ? exitFullscreen() : requestFullscreen()}
+        style={{
+          position: 'absolute',
+          bottom: mobile ? 'max(60px, calc(var(--safe-bottom) + 40px))' : '50px',
+          right: mobile ? 'max(12px, var(--safe-right))' : '20px',
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(212, 175, 55, 0.2)',
+          borderRadius: '8px',
+          color: '#d4af37',
+          fontSize: mobile ? '11px' : '12px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          padding: mobile ? '8px 12px' : '10px 14px',
+          letterSpacing: '1px',
+          textTransform: 'uppercase',
+          zIndex: 101,
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+        }}
+      >
+        {isFullscreen() ? '⛶ Exit' : '⛶ Fullscreen'}
+      </button>
     </div>
   )
 }
