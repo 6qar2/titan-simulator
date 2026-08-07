@@ -1,13 +1,13 @@
-import { useState, useEffect, useRef, useMemo, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei'
+import { PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import { TitleScreen } from './components/Game/TitleScreen/TitleScreen'
 import { WorldMap } from './components/Game/WorldMap/WorldMap'
 import { HUD } from './components/Game/HUD/HUD'
 import { CapuaZone } from './components/Game/Zones/Capua'
-import { PlayerCharacter, EnemyMesh, NPCMesh } from './components/Game/Character/Character'
-import { useGameStore, useCombatStore, useControlsStore, useZoneStore, useCharacterStore } from './stores/gameStore'
+import { PlayerCharacter, EnemyMesh } from './components/Game/Character/Character'
+import { useGameStore, useCombatStore, useControlsStore } from './stores/gameStore'
 import { useCombatSystem, useZoneSystem } from './systems/combatSystem'
 import { CITIES, COLORS, CAMERA_CONFIG } from './utils/constants'
 import './styles/global.css'
@@ -25,7 +25,6 @@ function useMobile() {
 
 function GameScene() {
   const gameStore = useGameStore()
-  const charStore = useCharacterStore()
   const combatStore = useCombatStore()
   const combatSystem = useCombatSystem()
   const zoneSystem = useZoneSystem()
@@ -69,7 +68,7 @@ function GameScene() {
       setEnemies(newEnemies)
       combatStore.startCombat(newEnemies)
     }
-  }, [sceneReady, enemies.length, combatStore.combatState, zoneSystem, combatStore])
+  }, [sceneReady, enemies.length, combatStore.combatState, combatStore, zoneSystem])
 
   useEffect(() => {
     const timer = setTimeout(() => setSceneReady(true), 50)
@@ -190,28 +189,14 @@ function GameScene() {
 
   return (
     <>
-      <Canvas shadows dpr={[1, 1.5]} resize={{ scroll: false, debounce: 100 }}>
+      <Canvas dpr={1} resize={{ scroll: false, debounce: 100 }}>
         <PerspectiveCamera makeDefault position={[0, CAMERA_CONFIG.THIRD_PERSON_HEIGHT, CAMERA_CONFIG.THIRD_PERSON_DISTANCE]} fov={60} />
         <Suspense fallback={null}>
           <CapuaZone />
         </Suspense>
-        <ContactShadows position={[0, -0.01, 0]} opacity={0.4} scale={30} blur={2} far={4} />
-        <OrbitControls
-          enablePan={false}
-          enableZoom={true}
-          minDistance={CAMERA_CONFIG.ZOOM_MIN}
-          maxDistance={CAMERA_CONFIG.ZOOM_MAX}
-          maxPolarAngle={Math.PI / 2.2}
-          target={[playerPosition[0], 1, playerPosition[2]]}
-        />
-        <ambientLight intensity={0.3} />
-        <directionalLight
-          position={[15, 25, 10]} intensity={1.5} castShadow
-          shadow-mapSize-width={1024} shadow-mapSize-height={1024}
-          shadow-camera-far={60} shadow-camera-left={-25} shadow-camera-right={25}
-          shadow-camera-top={25} shadow-camera-bottom={-25}
-        />
-        <hemisphereLight skyColor="#87ceeb" groundColor="#d4c4a8" intensity={0.4} />
+        <ambientLight intensity={0.5} />
+        <directionalLight position={[10, 20, 5]} intensity={1.0} />
+        <hemisphereLight skyColor="#87ceeb" groundColor="#d4c4a8" intensity={0.3} />
         <PlayerCharacter position={playerPosition} />
         {enemies.filter((e) => e.health > 0).map((enemy) => (
           <EnemyMesh key={enemy.id} position={enemy.position} color={enemy.color} enemyType={enemy.id} />
