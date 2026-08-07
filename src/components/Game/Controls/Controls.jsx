@@ -132,6 +132,7 @@ export function VirtualJoystick({ onMove, onEnd }) {
         touchAction: 'none',
         userSelect: 'none',
         zIndex: 20,
+        pointerEvents: 'auto',
       }}
     >
       <div
@@ -243,6 +244,7 @@ export function GestureZone({ onAttack, onBlock, onDodge }) {
         touchAction: 'none',
         userSelect: 'none',
         zIndex: 20,
+        pointerEvents: 'auto',
       }}
     >
       <div
@@ -298,6 +300,7 @@ export function TacticsButton({ onClick, active }) {
         zIndex: 20,
         minWidth: size,
         minHeight: size,
+        pointerEvents: 'auto',
       }}
     >
       TAC

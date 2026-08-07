@@ -134,6 +134,7 @@ export function HUD() {
           WebkitBackdropFilter: 'blur(10px)',
           padding: 0,
           lineHeight: 1,
+          pointerEvents: 'auto',
         }}
       >
         {fullscreen ? '⛶' : '⛶'}

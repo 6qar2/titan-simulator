@@ -1,15 +1,17 @@
 import { useRef, useMemo } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore, useControlsStore, useCharacterStore, playerPositionRef } from '../../../stores/gameStore'
 import { PlayerCharacter } from '../Character/Character'
-import { PHYSICS_CONFIG } from '../../../utils/constants'
+import { PHYSICS_CONFIG, CAMERA_CONFIG } from '../../../utils/constants'
 
 export function CapuaZone() {
   const { currentZone } = useGameStore()
   const controlsStore = useControlsStore()
   const charStore = useCharacterStore()
   const playerRef = useRef()
+  const { camera } = useThree()
+  const cameraTarget = useRef(new THREE.Vector3(0, 1, 0))
 
   useFrame((state, delta) => {
     if (!playerRef.current) return
@@ -47,6 +49,16 @@ export function CapuaZone() {
       playerRef.current.position.y,
       playerRef.current.position.z,
     ]
+
+    const playerPos = playerRef.current.position
+    cameraTarget.current.set(playerPos.x, playerPos.y + 1, playerPos.z)
+    const desiredPosition = new THREE.Vector3(
+      playerPos.x,
+      playerPos.y + CAMERA_CONFIG.THIRD_PERSON_HEIGHT,
+      playerPos.z + CAMERA_CONFIG.THIRD_PERSON_DISTANCE
+    )
+    camera.position.lerp(desiredPosition, delta * 3)
+    camera.lookAt(cameraTarget.current)
   })
 
   const buildings = useMemo(() => {
