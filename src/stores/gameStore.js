@@ -21,7 +21,7 @@ export const useGameStore = create(
       resetProgress: () => set({ denarii: 0, fame: 0, wave: 1 }),
     }),
     {
-      name: 'titan-simulator-save',
+      name: 'titan-rise-save',
       partialize: (state) => ({
         denarii: state.denarii,
         fame: state.fame,

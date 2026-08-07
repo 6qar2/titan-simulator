@@ -8,7 +8,7 @@ const isMobileScreen = () => {
   return window.innerWidth < 768 || ('ontouchstart' in window && window.innerWidth < 1024)
 }
 
-export function HUD() {
+export function HUD({ onOpenShop }) {
   const gameStore = useGameStore()
   const [fullscreen, setFullscreen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
@@ -40,9 +40,7 @@ export function HUD() {
           if (fullscreen) exitFullscreen()
           else {
             const ok = await requestFullscreen()
-            if (!ok) {
-              window.scrollTo(0, 1)
-            }
+            if (!ok) window.scrollTo(0, 1)
           }
         }}
         style={{
@@ -84,7 +82,7 @@ export function HUD() {
         padding: '6px 10px',
         borderRadius: '6px',
       }}>
-        TITAN SIMULATOR
+        TITAN RISE
       </div>
 
       <div style={{
@@ -97,7 +95,7 @@ export function HUD() {
         letterSpacing: '1px',
         textAlign: 'center',
       }}>
-        TAP TO ATTACK · SWIPE TO MOVE · TAP HERO TO DODGE
+        TAP TO SHOOT · TAP HERO TO DODGE · SWIPE TO MOVE
       </div>
     </div>
   )
