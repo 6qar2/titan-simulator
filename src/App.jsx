@@ -21,48 +21,14 @@ const ENEMY_TYPES = {
   brute: { name: 'Brute', hp: 90, speed: 0.7, damage: 16, color: '#8e44ad', radius: ENEMY_R + 5, score: 35 },
   boss: { name: 'Champion', hp: 180, speed: 0.55, damage: 22, color: '#2c3e50', radius: ENEMY_R + 8, score: 100 },
 }
-
-function useLandscape() {
-  const [landscape, setLandscape] = useState(true)
-  useEffect(() => {
-    const check = () => setLandscape(window.innerWidth > window.innerHeight)
-    check()
-    window.addEventListener('resize', check)
-    window.addEventListener('orientationchange', check)
-    return () => {
-      window.removeEventListener('resize', check)
-      window.removeEventListener('orientationchange', check)
-    }
-  }, [])
-  return landscape
-}
-
-function PortraitWarning() {
-  return (
-    <div style={{
-      position: 'absolute', inset: 0, background: '#0a0a0a',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      zIndex: 9999, padding: '20px', textAlign: 'center',
-    }}>
-      <div style={{ fontSize: '48px', marginBottom: '20px' }}>📱</div>
-      <div style={{ color: '#d4af37', fontSize: '24px', fontWeight: 'bold', marginBottom: '12px', fontFamily: 'serif' }}>
-        ROTATE YOUR DEVICE
-      </div>
-      <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '16px', maxWidth: '400px' }}>
-        Titan Simulator requires landscape mode for the best combat experience.
-      </div>
-    </div>
-  )
-}
-
 function Game2D() {
   const canvasRef = useRef(null)
   const store = useGameStore()
+
   const [phase, setPhase] = useState('playing')
   const [wave, setWave] = useState(1)
   const [combo, setCombo] = useState(0)
   const [comboTimer, setComboTimer] = useState(0)
-  const [lastDamage, setLastDamage] = useState(0)
   const [enemies, setEnemies] = useState([])
   const [particles, setParticles] = useState([])
   const [damageTexts, setDamageTexts] = useState([])
@@ -644,7 +610,7 @@ function Game2D() {
       }}>
         <div style={{ color: '#8b0000', fontSize: '32px', fontWeight: 'bold', marginBottom: '12px' }}>DEFEAT</div>
         <div style={{ color: '#fff', fontSize: '16px', marginBottom: '8px' }}>You have been defeated.</div>
-        <div style={{ color: COLORS.TITANS_GOLD, fontSize: '14px', marginBottom: '20px' }}>Wave {wave} · Fame: {store.gladiatorProgress.fame}</div>
+        <div style={{ color: COLORS.TITANS_GOLD, fontSize: '14px', marginBottom: '20px' }}>Wave {wave} · Fame: {store.fame}</div>
         <button onClick={() => { const p = playerRef.current; p.hp = p.maxHp; setGameOver(false); setPhase('playing'); spawnWave(1); setWave(1); setWaveTimer(0); store.setGameState('zone'); store.exitCombat && store.exitCombat(); store.denarii && store.removeDenarii(0); }} style={{
           padding: '12px 30px', background: 'linear-gradient(135deg, #8b0000, #b22222)',
           border: '1px solid #d4af37', borderRadius: '4px', color: '#d4af37',
@@ -718,7 +684,6 @@ function Game2D() {
 }
 
 export default function App() {
-  const landscape = useLandscape()
   const [phase, setPhase] = useState('loading')
   const store = useGameStore()
 
@@ -757,7 +722,6 @@ export default function App() {
       position: 'relative', width: '100vw', height: '100vh', height: '100dvh',
       overflow: 'hidden', background: '#0a0a0a',
     }}>
-      {!landscape && <PortraitWarning />}
       <Game2D key="game2d" />
     </div>
   )
