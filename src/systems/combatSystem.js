@@ -186,7 +186,6 @@ export function useZoneSystem() {
         maxHealth: enemyType.health,
         position: [
           (Math.random() - 0.5) * 20,
-          0,
           (Math.random() - 0.5) * 20,
         ],
         lastAttackTime: 0,

@@ -1,15 +1,10 @@
-import { useState, useEffect, useRef, Suspense } from 'react'
-import { Canvas } from '@react-three/fiber'
-import { PerspectiveCamera } from '@react-three/drei'
-import * as THREE from 'three'
+import { useState, useEffect, useRef } from 'react'
 import { TitleScreen } from './components/Game/TitleScreen/TitleScreen'
 import { WorldMap } from './components/Game/WorldMap/WorldMap'
 import { HUD } from './components/Game/HUD/HUD'
-import { CapuaZone } from './components/Game/Zones/Capua'
-import { EnemyMesh } from './components/Game/Character/Character'
 import { useGameStore, useCombatStore, useControlsStore, useCharacterStore, playerPositionRef } from './stores/gameStore'
 import { useCombatSystem, useZoneSystem } from './systems/combatSystem'
-import { COLORS, CAMERA_CONFIG } from './utils/constants'
+import { COLORS, PHYSICS_CONFIG } from './utils/constants'
 import './styles/global.css'
 
 function useMobile() {
@@ -55,10 +50,7 @@ function PortraitWarning() {
       padding: '20px',
       textAlign: 'center',
     }}>
-      <div style={{
-        fontSize: '48px',
-        marginBottom: '20px',
-      }}>📱</div>
+      <div style={{ fontSize: '48px', marginBottom: '20px' }}>📱</div>
       <div style={{
         color: '#d4af37',
         fontSize: '24px',
@@ -79,7 +71,191 @@ function PortraitWarning() {
   )
 }
 
-function GameScene() {
+function drawPlayer(ctx, x, y, appearance, sex, isAttacking) {
+  const bodyColor = appearance?.skinTone ? `hsl(${30 + appearance.skinTone * 20}, 50%, ${40 + appearance.skinTone * 20}%)` : '#d4a574'
+  const size = 20
+  const headSize = 8
+
+  ctx.save()
+  ctx.translate(x, y)
+
+  if (isAttacking) {
+    ctx.shadowColor = COLORS.TITANS_GOLD
+    ctx.shadowBlur = 15
+  }
+
+  ctx.fillStyle = bodyColor
+  ctx.beginPath()
+  ctx.arc(0, 0, size, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.strokeStyle = COLORS.TITANS_GOLD
+  ctx.lineWidth = 2
+  ctx.stroke()
+
+  ctx.fillStyle = '#2c1810'
+  ctx.beginPath()
+  ctx.arc(0, 0, headSize, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.restore()
+}
+
+function drawEnemy(ctx, enemy, cameraX, cameraY, canvasWidth, canvasHeight) {
+  const screenX = enemy.position[0] - cameraX + canvasWidth / 2
+  const screenY = enemy.position[1] - cameraY + canvasHeight / 2
+  const scale = enemy.typeId === 'beast' ? 1.3 : enemy.typeId === 'legionary_enemy' ? 1.1 : 1.0
+  const size = 18 * scale
+
+  ctx.save()
+  ctx.translate(screenX, screenY)
+
+  const alpha = enemy.health > 0 ? 1 : 0.3
+  ctx.globalAlpha = alpha
+
+  ctx.fillStyle = enemy.color || '#c0392b'
+  ctx.beginPath()
+  ctx.arc(0, 0, size, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.strokeStyle = COLORS.TITANS_CRIMSON
+  ctx.lineWidth = 2
+  ctx.stroke()
+
+  const headSize = 7 * scale
+  ctx.fillStyle = '#1a0a00'
+  ctx.beginPath()
+  ctx.arc(0, 0, headSize, 0, Math.PI * 2)
+  ctx.fill()
+
+  const stunActive = enemy.stunnedUntil > Date.now()
+  if (stunActive) {
+    ctx.strokeStyle = '#ffff00'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(0, 0, size + 4, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+
+  ctx.restore()
+}
+
+function drawGround(ctx, canvasWidth, canvasHeight, cameraX, cameraY) {
+  const groundSize = 1200
+  const startX = ((cameraX - canvasWidth / 2) % groundSize + groundSize) % groundSize - groundSize / 2
+  const startY = ((cameraY - canvasHeight / 2) % groundSize + groundSize) % groundSize - groundSize / 2
+
+  ctx.fillStyle = '#c4b080'
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+
+  ctx.strokeStyle = 'rgba(0,0,0,0.05)'
+  ctx.lineWidth = 1
+  for (let x = startX; x < canvasWidth + groundSize; x += groundSize) {
+    ctx.beginPath()
+    ctx.moveTo(x, 0)
+    ctx.lineTo(x, canvasHeight)
+    ctx.stroke()
+  }
+  for (let y = startY; y < canvasHeight + groundSize; y += groundSize) {
+    ctx.beginPath()
+    ctx.moveTo(0, y)
+    ctx.lineTo(canvasWidth, y)
+    ctx.stroke()
+  }
+}
+
+function drawBuildings(ctx, cameraX, cameraY, canvasWidth, canvasHeight) {
+  const buildingData = [
+    { pos: [-80, -80], size: [30, 40], color: '#d4c4a8' },
+    { pos: [80, -80], size: [25, 35], color: '#c4b498' },
+    { pos: [-80, 80], size: [40, 50], color: '#e0d0b0' },
+    { pos: [80, 80], size: [30, 40], color: '#d0c0a0' },
+    { pos: [0, -120], size: [60, 40], color: '#bca88c' },
+    { pos: [-120, 0], size: [30, 40], color: '#c8b898' },
+    { pos: [120, 0], size: [30, 50], color: '#d8c8a8' },
+    { pos: [0, 120], size: [50, 40], color: '#c0b090' },
+  ]
+
+  buildingData.forEach((b) => {
+    const screenX = b.pos[0] - cameraX + canvasWidth / 2
+    const screenY = b.pos[1] - cameraY + canvasHeight / 2
+    const w = b.size[0]
+    const h = b.size[1]
+
+    ctx.fillStyle = b.color
+    ctx.fillRect(screenX - w / 2, screenY - h / 2, w, h)
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(screenX - w / 2, screenY - h / 2, w, h)
+
+    ctx.fillStyle = 'rgba(0,0,0,0.1)'
+    ctx.fillRect(screenX - w / 2 + 2, screenY - h / 2 + 2, w - 4, h / 2)
+  })
+}
+
+function drawArenaRing(ctx, cameraX, cameraY, canvasWidth, canvasHeight) {
+  const centerX = 0 - cameraX + canvasWidth / 2
+  const centerY = 0 - cameraY + canvasHeight / 2
+  const outerRadius = 120
+  const innerRadius = 100
+
+  ctx.beginPath()
+  ctx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2)
+  ctx.fillStyle = 'rgba(196, 168, 130, 0.3)'
+  ctx.fill()
+  ctx.strokeStyle = '#c4a882'
+  ctx.lineWidth = 3
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2)
+  ctx.strokeStyle = '#8b0000'
+  ctx.lineWidth = 2
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.arc(centerX, centerY, outerRadius + 10, 0, Math.PI * 2)
+  ctx.strokeStyle = COLORS.TITANS_GOLD
+  ctx.lineWidth = 4
+  ctx.stroke()
+}
+
+function drawPillars(ctx, cameraX, cameraY, canvasWidth, canvasHeight) {
+  const pillarPositions = [[0, -60], [-30, -60], [30, -60]]
+
+  pillarPositions.forEach(([px, py]) => {
+    const screenX = px - cameraX + canvasWidth / 2
+    const screenY = py - cameraY + canvasHeight / 2
+
+    ctx.fillStyle = '#e8dcc8'
+    ctx.fillRect(screenX - 6, screenY - 30, 12, 60)
+    ctx.strokeStyle = '#d8c8a8'
+    ctx.lineWidth = 2
+    ctx.strokeRect(screenX - 6, screenY - 30, 12, 60)
+
+    ctx.fillStyle = '#d8c8a8'
+    ctx.fillRect(screenX - 10, screenY - 35, 20, 8)
+    ctx.strokeRect(screenX - 10, screenY - 35, 20, 8)
+  })
+}
+
+function drawDecor(ctx, cameraX, cameraY, canvasWidth, canvasHeight) {
+  for (let i = 0; i < 30; i++) {
+    const seed = i * 137.508
+    const dx = ((seed * 7.3) % 800) - 400
+    const dy = ((seed * 13.7) % 800) - 400
+    const screenX = dx - cameraX + canvasWidth / 2
+    const screenY = dy - cameraY + canvasHeight / 2
+
+    if (screenX < -20 || screenX > canvasWidth + 20 || screenY < -20 || screenY > canvasHeight + 20) continue
+
+    ctx.fillStyle = `hsl(${30 + (i % 20)}, 60%, ${25 + (i % 15)}%)`
+    ctx.beginPath()
+    ctx.arc(screenX, screenY, 3 + (i % 3), 0, Math.PI * 2)
+    ctx.fill()
+  }
+}
+
+function Game2D() {
+  const canvasRef = useRef(null)
   const gameStore = useGameStore()
   const charStore = useCharacterStore()
   const combatStore = useCombatStore()
@@ -90,7 +266,20 @@ function GameScene() {
   const [showWorldMap, setShowWorldMap] = useState(false)
   const [renderError, setRenderError] = useState(null)
   const [sceneReady, setSceneReady] = useState(false)
-  const clockRef = useRef(new THREE.Clock())
+
+  const controlsRef = useRef(controlsStore)
+  const combatRef = useRef(combatStore)
+  const charRef = useRef(charStore)
+  const combatSystemRef = useRef(combatSystem)
+  const zoneSystemRef = useRef(zoneSystem)
+
+  useEffect(() => {
+    controlsRef.current = controlsStore
+    combatRef.current = combatStore
+    charRef.current = charStore
+    combatSystemRef.current = combatSystem
+    zoneSystemRef.current = zoneSystem
+  })
 
   useEffect(() => {
     const errorHandler = (error) => {
@@ -114,7 +303,6 @@ function GameScene() {
         maxHealth: e.health,
         position: [
           (Math.random() - 0.5) * 16,
-          0,
           (Math.random() - 0.5) * 16,
         ],
         lastAttackTime: 0,
@@ -139,21 +327,22 @@ function GameScene() {
     const interval = setInterval(() => {
       const now = Date.now()
       const playerPos = playerPositionRef.current
-      combatStore.enemies.forEach((enemy) => {
+      const store = combatRef.current
+      store.enemies.forEach((enemy) => {
         if (enemy.health <= 0) return
         const dx = playerPos[0] - enemy.position[0]
-        const dz = playerPos[2] - enemy.position[2]
-        const distance = Math.sqrt(dx * dx + dz * dz)
+        const dy = playerPos[1] - enemy.position[1]
+        const distance = Math.sqrt(dx * dx + dy * dy)
         if (distance < enemy.attackRange && now > (enemy.lastAttackTime || 0) + enemy.attackCooldown * 1000) {
-          const result = combatSystem.enemyAttack(enemy)
+          const result = combatSystemRef.current.enemyAttack(enemy)
           if (result?.success) {
-            combatStore.updateEnemy(enemy.id, { lastAttackTime: now })
+            store.updateEnemy(enemy.id, { lastAttackTime: now })
           }
         }
       })
     }, 500)
     return () => clearInterval(interval)
-  }, [combatSystem, combatStore])
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -201,7 +390,7 @@ function GameScene() {
   useEffect(() => {
     if (!sceneReady) return
     const interval = setInterval(() => {
-      combatSystem.processEffects(clockRef.current.getDelta())
+      combatSystemRef.current.processEffects(0.1)
     }, 100)
     return () => clearInterval(interval)
   }, [sceneReady, combatSystem])
@@ -218,11 +407,71 @@ function GameScene() {
     return () => clearInterval(regenInterval)
   }, [combatStore, combatSystem])
 
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let animationId
+    let lastTime = performance.now()
+    const camera = { x: 0, y: 0 }
+
+    const render = (time) => {
+      const deltaTime = Math.min((time - lastTime) / 1000, 0.1)
+      lastTime = time
+
+      const controls = controlsRef.current
+      const char = charRef.current
+      const combat = combatRef.current
+
+      const rect = canvas.getBoundingClientRect()
+      canvas.width = rect.width * (window.devicePixelRatio || 1)
+      canvas.height = rect.height * (window.devicePixelRatio || 1)
+      ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0)
+      const canvasWidth = rect.width
+      const canvasHeight = rect.height
+
+      const speed = PHYSICS_CONFIG.PLAYER_SPEED * (controls.isAttacking ? 0.6 : 1.0)
+      const { x, y } = controls.moveInput
+
+      if (x !== 0 || y !== 0) {
+        playerPositionRef.current[0] += x * speed * deltaTime
+        playerPositionRef.current[1] += y * speed * deltaTime
+      }
+
+      const targetCamX = playerPositionRef.current[0]
+      const targetCamY = playerPositionRef.current[1]
+      camera.x += (targetCamX - camera.x) * 3 * deltaTime
+      camera.y += (targetCamY - camera.y) * 3 * deltaTime
+
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight)
+      drawGround(ctx, canvasWidth, canvasHeight, camera.x, camera.y)
+      drawBuildings(ctx, camera.x, camera.y, canvasWidth, canvasHeight)
+      drawDecor(ctx, camera.x, camera.y, canvasWidth, canvasHeight)
+      drawArenaRing(ctx, camera.x, camera.y, canvasWidth, canvasHeight)
+      drawPillars(ctx, camera.x, camera.y, canvasWidth, canvasHeight)
+
+      const screenPlayerX = playerPositionRef.current[0] - camera.x + canvasWidth / 2
+      const screenPlayerY = playerPositionRef.current[1] - camera.y + canvasHeight / 2
+      drawPlayer(ctx, screenPlayerX, screenPlayerY, char.appearance, char.sex, controls.isAttacking)
+
+      combat.enemies.forEach((enemy) => {
+        drawEnemy(ctx, enemy, camera.x, camera.y, canvasWidth, canvasHeight)
+      })
+
+      animationId = requestAnimationFrame(render)
+    }
+
+    animationId = requestAnimationFrame(render)
+    return () => cancelAnimationFrame(animationId)
+  }, [sceneReady])
+
   const handleTravel = (cityId) => {
     gameStore.travelToCity(cityId)
     setShowWorldMap(false)
     combatStore.exitCombat()
-    playerPositionRef.current = [0, 0, 5]
+    playerPositionRef.current = [0, 0]
   }
 
   if (renderError) {
@@ -251,18 +500,18 @@ function GameScene() {
 
   return (
     <>
-      <Canvas dpr={1} resize={{ scroll: false, debounce: 100 }}>
-        <PerspectiveCamera makeDefault position={[0, CAMERA_CONFIG.THIRD_PERSON_HEIGHT, CAMERA_CONFIG.THIRD_PERSON_DISTANCE]} fov={60} />
-        <Suspense fallback={null}>
-          <CapuaZone />
-        </Suspense>
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[10, 20, 5]} intensity={1.0} />
-        <hemisphereLight skyColor="#87ceeb" groundColor="#d4c4a8" intensity={0.3} />
-        {combatStore.enemies.filter((e) => e.health > 0).map((enemy) => (
-          <EnemyMesh key={enemy.id} position={enemy.position} color={enemy.color} enemyType={enemy.typeId || enemy.id} />
-        ))}
-      </Canvas>
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          display: 'block',
+          touchAction: 'none',
+        }}
+      />
 
       <HUD />
 
@@ -333,7 +582,7 @@ export default function App() {
         overflow: 'hidden', background: '#0a0a0a',
       }}>
         {!landscape && <PortraitWarning />}
-        <GameScene />
+        <Game2D />
       </div>
     )
   }

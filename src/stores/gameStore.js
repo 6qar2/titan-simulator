@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { CITIES, CHARACTER_SEX, SOCIAL_CLASSES, ATTRIBUTES, STANCES, ABILITIES, WEAPONS, SHIELDS, GLADIATOR_TYPES, LEGIONARY_RANKS, PHYSICS_CONFIG, CAMERA_CONFIG } from '../utils/constants'
 
-export const playerPositionRef = { current: [0, 0, 5] }
+export const playerPositionRef = { current: [0, 0] }
 
 const DEFAULT_ATTRIBUTES = {
   [ATTRIBUTES.STRENGTH]: 5,
