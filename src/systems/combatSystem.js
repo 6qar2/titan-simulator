@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useCombatStore, useGameStore, useZoneStore } from '../stores/gameStore'
 import { ABILITIES, ENEMY_TYPES, PHYSICS_CONFIG, GLADIATOR_TYPES } from '../utils/constants'
 
@@ -5,153 +6,143 @@ export function useCombatSystem() {
   const store = useCombatStore()
   const gameStore = useGameStore()
 
-  function processEffects(deltaTime) {
-    const now = Date.now()
-    const updatedEffects = store.activeEffects.filter((effect) => {
-      const elapsed = (now - effect.appliedAt) / 1000
-      if (elapsed >= effect.duration) return false
-      return true
-    })
-
-    if (updatedEffects.length !== store.activeEffects.length) {
-      store.set({
-        activeEffects: updatedEffects,
-        stunDuration: updatedEffects.find((e) => e.type === 'stun')?.remaining || 0,
-        rootDuration: updatedEffects.find((e) => e.type === 'root')?.remaining || 0,
+  const combatSystem = useMemo(() => ({
+    processEffects: (deltaTime) => {
+      const now = Date.now()
+      const updatedEffects = store.activeEffects.filter((effect) => {
+        const elapsed = (now - effect.appliedAt) / 1000
+        if (elapsed >= effect.duration) return false
+        return true
       })
-    }
-  }
 
-  function performAttack(abilityId, targetEnemy) {
-    const ability = ABILITIES[abilityId.toUpperCase()] || ABILITIES.QUICK_STRIKE
-    const characterAttrs = { strength: 5, agility: 5 }
+      if (updatedEffects.length !== store.activeEffects.length) {
+        store.set({
+          activeEffects: updatedEffects,
+          stunDuration: updatedEffects.find((e) => e.type === 'stun')?.remaining || 0,
+          rootDuration: updatedEffects.find((e) => e.type === 'root')?.remaining || 0,
+        })
+      }
+    },
 
-    if (store.playerStamina < ability.staminaCost) {
-      return { success: false, message: 'Not enough stamina' }
-    }
+    performAttack: (abilityId, targetEnemy) => {
+      const ability = ABILITIES[abilityId.toUpperCase()] || ABILITIES.QUICK_STRIKE
+      const characterAttrs = { strength: 5, agility: 5 }
 
-    store.modifyStamina(-ability.staminaCost)
-
-    if (ability.effect === 'stun' && targetEnemy) {
-      store.applyEffect({
-        id: `stun-${Date.now()}`,
-        type: 'stun',
-        duration: ability.effectDuration,
-        remaining: ability.effectDuration,
-        targetId: targetEnemy.id,
-      })
-      store.setStun(ability.effectDuration)
-    }
-
-    if (ability.effect === 'root' && targetEnemy) {
-      store.applyEffect({
-        id: `root-${Date.now()}`,
-        type: 'root',
-        duration: ability.effectDuration,
-        remaining: ability.effectDuration,
-        targetId: targetEnemy.id,
-      })
-      store.setRoot(ability.effectDuration)
-    }
-
-    if (ability.effect === 'heal') {
-      store.modifyHealth(-ability.damage)
-      return { success: true, message: 'Bandage applied', healAmount: -ability.damage }
-    }
-
-    if (ability.effect === 'parry') {
-      store.applyEffect({
-        id: `parry-${Date.now()}`,
-        type: 'parry',
-        duration: ability.effectDuration,
-        remaining: ability.effectDuration,
-      })
-      return { success: true, message: 'Parrying...' }
-    }
-
-    let damage = ability.damage + characterAttrs.strength * 2
-
-    if (targetEnemy) {
-      store.updateEnemy(targetEnemy.id, { health: targetEnemy.health - damage })
-      store.incrementCombo()
-
-      if (targetEnemy.health - damage <= 0) {
-        store.removeEnemy(targetEnemy.id)
-        gameStore.recordVictory()
-
-        if (store.enemies.length === 0) {
-          store.endCombat(true)
-        }
+      if (store.playerStamina < ability.staminaCost) {
+        return { success: false, message: 'Not enough stamina' }
       }
 
-      return { success: true, damage, message: `Dealt ${damage} damage` }
-    }
+      store.modifyStamina(-ability.staminaCost)
 
-    return { success: true, damage, message: `Attack prepared` }
-  }
+      if (ability.effect === 'stun' && targetEnemy) {
+        store.applyEffect({
+          id: `stun-${Date.now()}`,
+          type: 'stun',
+          duration: ability.effectDuration,
+          remaining: ability.effectDuration,
+          targetId: targetEnemy.id,
+        })
+        store.setStun(ability.effectDuration)
+      }
 
-  function enemyAttack(enemy) {
-    if (!enemy || enemy.health <= 0) return
+      if (ability.effect === 'root' && targetEnemy) {
+        store.applyEffect({
+          id: `root-${Date.now()}`,
+          type: 'root',
+          duration: ability.effectDuration,
+          remaining: ability.effectDuration,
+          targetId: targetEnemy.id,
+        })
+        store.setRoot(ability.effectDuration)
+      }
 
-    const now = Date.now()
-    const lastAttack = enemy.lastAttackTime || 0
-    if (now - lastAttack < enemy.attackCooldown * 1000) return
+      if (ability.effect === 'heal') {
+        store.modifyHealth(-ability.damage)
+        return { success: true, message: 'Bandage applied', healAmount: -ability.damage }
+      }
 
-    const parryActive = store.activeEffects.some((e) => e.type === 'parry')
-    if (parryActive) {
-      store.removeEffect(store.activeEffects.find((e) => e.type === 'parry').id)
-      store.updateEnemy(enemy.id, { lastAttackTime: now, stunnedUntil: now + 500 })
-      return { blocked: true, message: 'Parried!' }
-    }
+      if (ability.effect === 'parry') {
+        store.applyEffect({
+          id: `parry-${Date.now()}`,
+          type: 'parry',
+          duration: ability.effectDuration,
+          remaining: ability.effectDuration,
+        })
+        return { success: true, message: 'Parrying...' }
+      }
 
-    const damage = enemy.damage
-    store.modifyHealth(-damage)
-    store.updateEnemy(enemy.id, { lastAttackTime: now })
+      let damage = ability.damage + characterAttrs.strength * 2
 
-    if (store.playerHealth <= 0) {
-      store.endCombat(false)
-    }
+      if (targetEnemy) {
+        store.updateEnemy(targetEnemy.id, { health: targetEnemy.health - damage })
+        store.incrementCombo()
 
-    return { success: true, damage, message: `Took ${damage} damage` }
-  }
+        if (targetEnemy.health - damage <= 0) {
+          store.removeEnemy(targetEnemy.id)
+          gameStore.recordVictory()
 
-  function getAvailableAbilities() {
-    return store.abilities
-      .map((id) => {
-        const key = id.toUpperCase().replace(/-/g, '_')
-        return ABILITIES[key] || ABILITIES.QUICK_STRIKE
-      })
-      .filter((ability) => store.playerStamina >= ability.staminaCost)
-  }
+          if (store.enemies.length === 0) {
+            store.endCombat(true)
+          }
+        }
 
-  function canUseAbility(abilityId) {
-    const ability = ABILITIES[abilityId.toUpperCase()] || ABILITIES.QUICK_STRIKE
-    return store.playerStamina >= ability.staminaCost
-  }
+        return { success: true, damage, message: `Dealt ${damage} damage` }
+      }
 
-  function getStaminaRegenRate() {
-    return 8
-  }
+      return { success: true, damage, message: `Attack prepared` }
+    },
 
-  function getHealthRegenRate() {
-    return 0.5
-  }
+    enemyAttack: (enemy) => {
+      if (!enemy || enemy.health <= 0) return
 
-  return {
-    processEffects,
-    performAttack,
-    enemyAttack,
-    getAvailableAbilities,
-    canUseAbility,
-    getStaminaRegenRate,
-    getHealthRegenRate,
-  }
+      const now = Date.now()
+      const lastAttack = enemy.lastAttackTime || 0
+      if (now - lastAttack < enemy.attackCooldown * 1000) return
+
+      const parryActive = store.activeEffects.some((e) => e.type === 'parry')
+      if (parryActive) {
+        store.removeEffect(store.activeEffects.find((e) => e.type === 'parry').id)
+        store.updateEnemy(enemy.id, { lastAttackTime: now, stunnedUntil: now + 500 })
+        return { blocked: true, message: 'Parried!' }
+      }
+
+      const damage = enemy.damage
+      store.modifyHealth(-damage)
+      store.updateEnemy(enemy.id, { lastAttackTime: now })
+
+      if (store.playerHealth <= 0) {
+        store.endCombat(false)
+      }
+
+      return { success: true, damage, message: `Took ${damage} damage` }
+    },
+
+    getAvailableAbilities: () => {
+      return store.abilities
+        .map((id) => {
+          const key = id.toUpperCase().replace(/-/g, '_')
+          return ABILITIES[key] || ABILITIES.QUICK_STRIKE
+        })
+        .filter((ability) => store.playerStamina >= ability.staminaCost)
+    },
+
+    canUseAbility: (abilityId) => {
+      const ability = ABILITIES[abilityId.toUpperCase()] || ABILITIES.QUICK_STRIKE
+      return store.playerStamina >= ability.staminaCost
+    },
+
+    getStaminaRegenRate: () => 8,
+
+    getHealthRegenRate: () => 0.5,
+  }), [store, gameStore])
+
+  return combatSystem
 }
 
 export function useZoneSystem() {
   const store = useZoneStore()
 
-  function getZoneConfig(zoneId) {
+  const getZoneConfig = (zoneId) => {
     const zoneConfigs = {
       arena: {
         name: 'Arena',
@@ -181,31 +172,31 @@ export function useZoneSystem() {
     return zoneConfigs[zoneId] || { name: zoneId, description: '', enemies: [], allowCombat: false }
   }
 
-  function spawnEnemiesForZone(zoneId) {
-    const config = getZoneConfig(zoneId)
-    if (!config.allowCombat) return []
-
-    return config.enemies.map((enemyType, index) => ({
-      ...enemyType,
-      typeId: enemyType.id,
-      id: `enemy-${Date.now()}-${index}`,
-      health: enemyType.health,
-      maxHealth: enemyType.health,
-      position: [
-        (Math.random() - 0.5) * 20,
-        0,
-        (Math.random() - 0.5) * 20,
-      ],
-      lastAttackTime: 0,
-      stunnedUntil: 0,
-      state: 'idle',
-    }))
-  }
-
-  return {
+  const zoneSystem = useMemo(() => ({
     getZoneConfig,
-    spawnEnemiesForZone,
-  }
+    spawnEnemiesForZone: (zoneId) => {
+      const config = getZoneConfig(zoneId)
+      if (!config.allowCombat) return []
+
+      return config.enemies.map((enemyType, index) => ({
+        ...enemyType,
+        typeId: enemyType.id,
+        id: `enemy-${Date.now()}-${index}`,
+        health: enemyType.health,
+        maxHealth: enemyType.health,
+        position: [
+          (Math.random() - 0.5) * 20,
+          0,
+          (Math.random() - 0.5) * 20,
+        ],
+        lastAttackTime: 0,
+        stunnedUntil: 0,
+        state: 'idle',
+      }))
+    },
+  }), [store])
+
+  return zoneSystem
 }
 
 export function useCharacterSystem() {

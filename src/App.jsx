@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef, Suspense } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import { TitleScreen } from './components/Game/TitleScreen/TitleScreen'
 import { WorldMap } from './components/Game/WorldMap/WorldMap'
 import { HUD } from './components/Game/HUD/HUD'
 import { CapuaZone } from './components/Game/Zones/Capua'
-import { PlayerCharacter, EnemyMesh } from './components/Game/Character/Character'
+import { EnemyMesh } from './components/Game/Character/Character'
 import { useGameStore, useCombatStore, useControlsStore, useCharacterStore, playerPositionRef } from './stores/gameStore'
 import { useCombatSystem, useZoneSystem } from './systems/combatSystem'
-import { CITIES, COLORS, CAMERA_CONFIG } from './utils/constants'
+import { COLORS, CAMERA_CONFIG } from './utils/constants'
 import './styles/global.css'
 
 function useMobile() {
@@ -200,8 +200,10 @@ function GameScene() {
 
   useEffect(() => {
     if (!sceneReady) return
-    const raf = requestAnimationFrame(() => combatSystem.processEffects(clockRef.current.getDelta()))
-    return () => cancelAnimationFrame(raf)
+    const interval = setInterval(() => {
+      combatSystem.processEffects(clockRef.current.getDelta())
+    }, 100)
+    return () => clearInterval(interval)
   }, [sceneReady, combatSystem])
 
   useEffect(() => {
