@@ -28,6 +28,10 @@ export function TitleScreen({ onStart }) {
     }
   }
 
+  const handleContinue = () => {
+    onStart?.()
+  }
+
   const titleSize = mobile ? '42px' : '64px'
   const letterSpacing = mobile ? '4px' : '8px'
   const subtitleSize = mobile ? '12px' : '14px'
@@ -148,7 +152,7 @@ export function TitleScreen({ onStart }) {
             New Game
           </button>
           <button
-            onClick={() => gameStore.setGameState('zone')}
+            onClick={handleContinue}
             style={{
               padding: buttonPadding,
               background: 'rgba(255,255,255,0.03)',

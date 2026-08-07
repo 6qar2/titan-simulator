@@ -1,16 +1,13 @@
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore, useControlsStore } from '../../../stores/gameStore'
-import { PHYSICS_CONFIG, INPUT_CONFIG } from '../../../utils/constants'
+import { PHYSICS_CONFIG } from '../../../utils/constants'
 
 export function CapuaZone() {
-  const { currentZone, setInCombat, enterCombat } = useGameStore()
+  const { currentZone } = useGameStore()
   const controlsStore = useControlsStore()
   const playerRef = useRef()
-  const playerVelocity = useRef([0, 0, 0])
-  const keysPressed = useRef({})
 
   useFrame((state, delta) => {
     if (!playerRef.current) return
@@ -19,7 +16,6 @@ export function CapuaZone() {
     const { x, y } = controlsStore.moveInput
 
     if (x !== 0 || y !== 0) {
-      const angle = Math.atan2(x, y)
       const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(state.camera.quaternion)
       forward.y = 0
       forward.normalize()
@@ -56,8 +52,6 @@ export function CapuaZone() {
       { pos: [-12, 0, 0], size: [3, 3, 3], color: '#c8b898' },
       { pos: [12, 0, 0], size: [3, 4, 3], color: '#d8c8a8' },
       { pos: [0, 0, 12], size: [5, 3.5, 4], color: '#c0b090' },
-      { pos: [-5, 0, -5], size: [2, 2.5, 2], color: '#d4c4a8' },
-      { pos: [5, 0, 5], size: [2, 2.5, 2], color: '#c4b498' },
     ]
     return buildingData.map((b, i) => (
       <Building key={i} position={b.pos} size={b.size} color={b.color} />
@@ -66,16 +60,14 @@ export function CapuaZone() {
 
   const groundDecor = useMemo(() => {
     const decor = []
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 20; i++) {
       const x = (Math.random() - 0.5) * 40
       const z = (Math.random() - 0.5) * 40
       decor.push(
-        <group key={`decor-${i}`} position={[x, 0, z]}>
-          <mesh position={[0, 0.1, 0]} rotation={[0, Math.random() * Math.PI, 0]}>
-            <cylinderGeometry args={[0.1, 0.15, 0.2, 6]} />
-            <meshStandardMaterial color="#8b4513" roughness={0.9} />
-          </mesh>
-        </group>
+        <mesh key={`decor-${i}`} position={[x, 0.1, z]} rotation={[0, Math.random() * Math.PI, 0]}>
+          <cylinderGeometry args={[0.1, 0.15, 0.2, 4]} />
+          <meshStandardMaterial color="#8b4513" roughness={0.9} />
+        </mesh>
       )
     }
     return decor
@@ -83,13 +75,13 @@ export function CapuaZone() {
 
   return (
     <group>
-      <ambientLight intensity={0.4} />
+      <ambientLight intensity={0.5} />
       <directionalLight
         position={[10, 20, 5]}
-        intensity={1.2}
+        intensity={1.0}
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
         shadow-camera-far={50}
         shadow-camera-left={-20}
         shadow-camera-right={20}
@@ -109,8 +101,6 @@ export function CapuaZone() {
       <Pillar position={[0, 0, -6]} />
       <Pillar position={[-3, 0, -6]} />
       <Pillar position={[3, 0, -6]} />
-      <Pillar position={[-6, 0, -6]} />
-      <Pillar position={[6, 0, -6]} />
 
       <ArenaRing position={[0, 0, 0]} />
 

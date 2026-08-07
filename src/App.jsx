@@ -35,6 +35,7 @@ function GameScene({ onBackToTitle }) {
   const [enemies, setEnemies] = useState([])
   const [playerPosition, setPlayerPosition] = useState([0, 0, 5])
   const [renderError, setRenderError] = useState(null)
+  const [sceneReady, setSceneReady] = useState(false)
   const clockRef = useRef(new THREE.Clock())
   const enemyUpdateInterval = useRef(null)
 
@@ -58,15 +59,21 @@ function GameScene({ onBackToTitle }) {
   }, [charStore.character, gameStore.gameState])
 
   useEffect(() => {
-    if (gameStore.gameState === 'title' || gameStore.gameState === 'character_creation') {
-      return
+    const hasEnteredGame = sessionStorage.getItem('titan-simulator-entered')
+    if (hasEnteredGame && gameStore.gameState === 'zone') {
+      setSceneReady(true)
     }
+  }, [gameStore.gameState])
 
-    if (gameStore.currentCity !== CITIES.CAPUA) {
-      return
+  useEffect(() => {
+    if (gameStore.gameState === 'zone') {
+      const timer = setTimeout(() => setSceneReady(true), 100)
+      return () => clearTimeout(timer)
     }
+  }, [gameStore.gameState])
 
-    if (enemies.length === 0 && combatStore.combatState === 'idle') {
+  useEffect(() => {
+    if (enemies.length === 0 && combatStore.combatState === 'idle' && sceneReady && gameStore.currentCity === CITIES.CAPUA) {
       const newEnemies = zoneSystem.spawnEnemiesForZone('arena').map((e, i) => ({
         ...e,
         id: `enemy-${Date.now()}-${i}`,
@@ -84,7 +91,7 @@ function GameScene({ onBackToTitle }) {
       setEnemies(newEnemies)
       combatStore.startCombat(newEnemies)
     }
-  }, [gameStore.gameState, gameStore.currentCity])
+  }, [sceneReady, gameStore.currentCity, enemies.length, combatStore.combatState, zoneSystem])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -210,6 +217,7 @@ function GameScene({ onBackToTitle }) {
   }
 
   const handleStartGame = () => {
+    sessionStorage.setItem('titan-simulator-entered', 'true')
     gameStore.setGameState('zone')
     setShowWorldMap(false)
   }
@@ -218,6 +226,37 @@ function GameScene({ onBackToTitle }) {
 
   if (gameState === 'title' || gameState === 'character_creation') {
     return <TitleScreen onStart={handleStartGame} />
+  }
+
+  if (!sceneReady) {
+    return (
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: '#0a0a0a',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 200,
+      }}>
+        <div style={{
+          width: '50px',
+          height: '50px',
+          border: '3px solid rgba(212, 175, 55, 0.2)',
+          borderTop: '3px solid #d4af37',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '20px',
+        }} />
+        <div style={{ color: COLORS.TITANS_GOLD, fontSize: '14px', letterSpacing: '3px' }}>
+          ENTERING CAPUA...
+        </div>
+      </div>
+    )
   }
 
   if (renderError) {
@@ -403,13 +442,29 @@ function LoadingScreen() {
 
 export default function App() {
   const [loading, setLoading] = useState(true)
+  const [appInitialized, setAppInitialized] = useState(false)
+  const gameStore = useGameStore()
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1500)
-    return () => clearTimeout(timer)
+    const init = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 800))
+      setLoading(false)
+      setAppInitialized(true)
+    }
+    init()
   }, [])
 
+  useEffect(() => {
+    if (appInitialized && gameStore.gameState === 'zone' && !sessionStorage.getItem('titan-simulator-entered')) {
+      gameStore.setGameState('title')
+    }
+  }, [appInitialized, gameStore.gameState])
+
   if (loading) {
+    return <LoadingScreen />
+  }
+
+  if (!appInitialized) {
     return <LoadingScreen />
   }
 
