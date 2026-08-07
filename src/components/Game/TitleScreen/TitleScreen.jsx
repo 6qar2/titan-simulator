@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useGameStore, useCharacterStore } from '../../../stores/gameStore'
 import { CITIES, CHARACTER_SEX, SOCIAL_CLASSES, ATTRIBUTES, ATTRIBUTE_LABELS, COLORS } from '../../../utils/constants'
 import { createNewCharacter } from '../../../systems/saveSystem'
-import { requestFullscreen, exitFullscreen, isFullscreen } from '../../../utils/fullscreen'
+import { requestFullscreen, exitFullscreen, isFullscreen, hideAddressBar } from '../../../utils/fullscreen'
 
 function useMobile() {
   const [mobile, setMobile] = useState(false)
@@ -17,9 +17,20 @@ function useMobile() {
 
 export function TitleScreen({ onStart }) {
   const [screen, setScreen] = useState('main')
+  const [fullscreen, setFullscreen] = useState(false)
   const gameStore = useGameStore()
   const charStore = useCharacterStore()
   const mobile = useMobile()
+
+  useEffect(() => {
+    const onFsChange = () => setFullscreen(isFullscreen())
+    document.addEventListener('fullscreenchange', onFsChange)
+    document.addEventListener('webkitfullscreenchange', onFsChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      document.removeEventListener('webkitfullscreenchange', onFsChange)
+    }
+  }, [])
 
   const handleStart = () => {
     if (charStore.character) {
@@ -254,7 +265,16 @@ export function TitleScreen({ onStart }) {
       </div>
 
       <button
-        onClick={() => isFullscreen() ? exitFullscreen() : requestFullscreen()}
+        onClick={async () => {
+          if (fullscreen) {
+            exitFullscreen()
+          } else {
+            const ok = await requestFullscreen()
+            if (!ok) {
+              hideAddressBar()
+            }
+          }
+        }}
         style={{
           position: 'absolute',
           bottom: mobile ? 'max(60px, calc(var(--safe-bottom) + 40px))' : '50px',
@@ -274,7 +294,7 @@ export function TitleScreen({ onStart }) {
           WebkitBackdropFilter: 'blur(10px)',
         }}
       >
-        {isFullscreen() ? '⛶ Exit' : '⛶ Fullscreen'}
+        {fullscreen ? '⛶ Exit' : '⛶ Fullscreen'}
       </button>
     </div>
   )

@@ -1,8 +1,34 @@
-export function requestFullscreen() {
-  const el = document.documentElement
-  if (el.requestFullscreen) return el.requestFullscreen()
-  if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen()
-  if (el.msRequestFullscreen) return el.msRequestFullscreen()
+export async function requestFullscreen() {
+  const candidates = [
+    () => document.documentElement,
+    () => document.body,
+    () => document.getElementById('root'),
+  ]
+
+  for (const getEl of candidates) {
+    const el = getEl()
+    if (!el) continue
+
+    try {
+      if (el.requestFullscreen) {
+        await el.requestFullscreen()
+        return true
+      }
+      if (el.webkitRequestFullscreen) {
+        await el.webkitRequestFullscreen()
+        return true
+      }
+      if (el.msRequestFullscreen) {
+        await el.msRequestFullscreen()
+        return true
+      }
+    } catch (err) {
+      console.warn('Fullscreen request failed for element:', el, err)
+    }
+  }
+
+  console.warn('Fullscreen API not supported or all attempts failed')
+  return false
 }
 
 export function exitFullscreen() {
@@ -18,4 +44,11 @@ export function isFullscreen() {
     document.webkitFullscreenElement ||
     document.msFullscreenElement
   )
+}
+
+export function hideAddressBar() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  if (document.documentElement && document.documentElement.scrollHeight > window.innerHeight) {
+    window.scrollTo(0, 1)
+  }
 }

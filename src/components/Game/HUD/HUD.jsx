@@ -3,7 +3,7 @@ import { useGameStore, useCombatStore, useControlsStore } from '../../../stores/
 import { useCombatSystem } from '../../../systems/combatSystem'
 import { ABILITIES, COLORS, INPUT_CONFIG } from '../../../utils/constants'
 import { VirtualJoystick, GestureZone, TacticsButton } from '../Controls/Controls'
-import { requestFullscreen, exitFullscreen, isFullscreen } from '../../../utils/fullscreen'
+import { requestFullscreen, exitFullscreen, isFullscreen, hideAddressBar } from '../../../utils/fullscreen'
 
 const isMobileScreen = () => {
   if (typeof window === 'undefined') return false
@@ -18,12 +18,16 @@ export function HUD() {
   const [showTactics, setShowTactics] = useState(false)
   const [mobileControls, setMobileControls] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(isMobileScreen())
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
+    const onFsChange = () => setFullscreen(isFullscreen())
+    document.addEventListener('fullscreenchange', onFsChange)
+    document.addEventListener('webkitfullscreenchange', onFsChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      document.removeEventListener('webkitfullscreenchange', onFsChange)
+    }
   }, [])
 
   useEffect(() => {
@@ -99,7 +103,16 @@ export function HUD() {
       paddingTop: 'var(--safe-top)',
     }}>
       <button
-        onClick={() => isFullscreen() ? exitFullscreen() : requestFullscreen()}
+        onClick={async () => {
+          if (fullscreen) {
+            exitFullscreen()
+          } else {
+            const ok = await requestFullscreen()
+            if (!ok) {
+              hideAddressBar()
+            }
+          }
+        }}
         style={{
           position: 'absolute',
           top: topPadding,
@@ -123,7 +136,7 @@ export function HUD() {
           lineHeight: 1,
         }}
       >
-        ⛶
+        {fullscreen ? '⛶' : '⛶'}
       </button>
 
       <div style={{
