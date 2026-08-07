@@ -7,7 +7,7 @@ import { WorldMap } from './components/Game/WorldMap/WorldMap'
 import { HUD } from './components/Game/HUD/HUD'
 import { CapuaZone } from './components/Game/Zones/Capua'
 import { PlayerCharacter, EnemyMesh, NPCMesh } from './components/Game/Character/Character'
-import { useGameStore, useCombatStore, useControlsStore, useZoneStore } from './stores/gameStore'
+import { useGameStore, useCombatStore, useControlsStore, useZoneStore, useCharacterStore } from './stores/gameStore'
 import { useCombatSystem, useZoneSystem } from './systems/combatSystem'
 import { ENEMY_TYPES, CITIES, COLORS, PHYSICS_CONFIG, CAMERA_CONFIG } from './utils/constants'
 import './styles/global.css'
@@ -25,6 +25,7 @@ function useMobile() {
 
 function GameScene({ onBackToTitle }) {
   const gameStore = useGameStore()
+  const charStore = useCharacterStore()
   const combatStore = useCombatStore()
   const zoneStore = useZoneStore()
   const combatSystem = useCombatSystem()
@@ -33,8 +34,28 @@ function GameScene({ onBackToTitle }) {
   const [showWorldMap, setShowWorldMap] = useState(false)
   const [enemies, setEnemies] = useState([])
   const [playerPosition, setPlayerPosition] = useState([0, 0, 5])
+  const [renderError, setRenderError] = useState(null)
   const clockRef = useRef(new THREE.Clock())
   const enemyUpdateInterval = useRef(null)
+
+  useEffect(() => {
+    const errorHandler = (error) => {
+      console.error('Game render error:', error)
+      setRenderError(error.message)
+    }
+    window.addEventListener('error', errorHandler)
+    window.addEventListener('unhandledrejection', errorHandler)
+    return () => {
+      window.removeEventListener('error', errorHandler)
+      window.removeEventListener('unhandledrejection', errorHandler)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (charStore.character && gameStore.gameState === 'zone') {
+      gameStore.setGameState('zone')
+    }
+  }, [charStore.character, gameStore.gameState])
 
   useEffect(() => {
     if (gameStore.gameState === 'title' || gameStore.gameState === 'character_creation') {
@@ -197,6 +218,50 @@ function GameScene({ onBackToTitle }) {
 
   if (gameState === 'title' || gameState === 'character_creation') {
     return <TitleScreen onStart={handleStartGame} />
+  }
+
+  if (renderError) {
+    return (
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: '#0a0a0a',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 200,
+        padding: '20px',
+      }}>
+        <div style={{ color: COLORS.TITANS_CRIMSON, fontSize: '18px', marginBottom: '12px', textAlign: 'center' }}>
+          Rendering Error
+        </div>
+        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', marginBottom: '20px', textAlign: 'center', maxWidth: '400px' }}>
+          {renderError}
+        </div>
+        <button
+          onClick={() => {
+            setRenderError(null)
+            window.location.reload()
+          }}
+          style={{
+            padding: '12px 24px',
+            background: 'linear-gradient(135deg, #8b0000, #b22222)',
+            border: '1px solid #d4af37',
+            borderRadius: '4px',
+            color: '#d4af37',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 'bold',
+          }}
+        >
+          Reload
+        </button>
+      </div>
+    )
   }
 
   return (

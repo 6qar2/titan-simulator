@@ -248,9 +248,17 @@ export function TitleScreen({ onStart }) {
 
 function CharacterCreation({ onBack, onComplete }) {
   const charStore = useCharacterStore()
+  const gameStore = useGameStore()
   const [step, setStep] = useState(1)
   const [error, setError] = useState('')
   const mobile = useMobile()
+
+  useEffect(() => {
+    if (charStore.character && gameStore.gameState === 'character_creation') {
+      gameStore.setGameState('zone')
+      onComplete?.()
+    }
+  }, [charStore.character])
 
   const handleCreate = () => {
     if (step === 1) {
